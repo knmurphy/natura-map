@@ -9,22 +9,46 @@ function timestamp() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
 }
 
-function captureMap(getMapFn) {
+async function captureMap(getMapFn) {
   const map = getMapFn();
   if (!map) {
     alert('Map is not loaded yet.');
     return null;
   }
+  
+  // Wait for map to be fully rendered before capturing
+  return new Promise((resolve) => {
+    // Check if map is already idle and loaded
+    if (map.loaded() && !map.isMoving() && !map.isZooming() && !map.isRotating()) {
+      // Map is ready, capture immediately
+      captureCanvas(map, resolve);
+    } else {
+      // Wait for next render cycle when map is idle
+      map.once('idle', () => {
+        captureCanvas(map, resolve);
+      });
+    }
+  });
+}
+
+function captureCanvas(map, resolve) {
   try {
-    return map.getCanvas().toDataURL('image/png');
+    // Force a repaint to ensure canvas is up to date
+    map._render();
+    
+    // Small delay to ensure the render completes
+    setTimeout(() => {
+      const dataUrl = map.getCanvas().toDataURL('image/png');
+      resolve(dataUrl);
+    }, 50);
   } catch (err) {
     alert('Could not capture map: ' + err.message);
-    return null;
+    resolve(null);
   }
 }
 
-function exportPNG(getMapFn) {
-  const dataUrl = captureMap(getMapFn);
+async function exportPNG(getMapFn) {
+  const dataUrl = await captureMap(getMapFn);
   if (!dataUrl) return;
 
   const a = document.createElement('a');
@@ -35,8 +59,8 @@ function exportPNG(getMapFn) {
   document.body.removeChild(a);
 }
 
-function exportPDF(getMapFn) {
-  const dataUrl = captureMap(getMapFn);
+async function exportPDF(getMapFn) {
+  const dataUrl = await captureMap(getMapFn);
   if (!dataUrl) return;
 
   const legendEl = document.getElementById('legend-content');
