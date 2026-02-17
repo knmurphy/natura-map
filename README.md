@@ -79,7 +79,7 @@ src/
 ## Acknowledgments
 
 - Data from [iNaturalist](https://www.inaturalist.org)
-- Inspired by [Alan Rockefeller](https://www.alanrockefeller.com)
+- Inspired by a comment from Alan Rockefeller
 
 ## License
 
