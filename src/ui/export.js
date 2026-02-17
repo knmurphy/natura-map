@@ -31,18 +31,25 @@ async function captureMap(getMapFn) {
   });
 }
 
+/**
+ * Capture the canvas.
+ * 
+ * TODO: This currently produces blank images. The WebGL buffer is cleared after
+ * rendering and the timing of toDataURL() is critical. See docs/known-issues.md for
+ * details and research on potential fixes.
+ * 
+ * Recommended solutions:
+ * 1. Use @watergis/maplibre-gl-export plugin
+ * 2. Hook into render event to capture during frame draw
+ */
 function captureCanvas(map, resolve) {
   try {
-    // Force a repaint to ensure canvas is up to date
-    map._render();
-    
-    // Small delay to ensure the render completes
-    setTimeout(() => {
-      const dataUrl = map.getCanvas().toDataURL('image/png');
-      resolve(dataUrl);
-    }, 50);
+    // Simple direct capture - will produce blank image
+    // See docs/known-issues.md for details
+    const dataUrl = map.getCanvas().toDataURL('image/png');
+    resolve(dataUrl);
   } catch (err) {
-    alert('Could not capture map: ' + err.message);
+    alert('Could not capture canvas: ' + err.message);
     resolve(null);
   }
 }

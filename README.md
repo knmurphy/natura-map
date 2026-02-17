@@ -76,6 +76,10 @@ src/
     export.js          # PNG/PDF map export
 ```
 
+## Known Issues
+
+- **PNG/PDF export produces blank images** — The export buttons download files, but they are transparent/black. See [docs/known-issues.md](docs/known-issues.md) for details and research on fixes.
+
 ## Acknowledgments
 
 - Data from [iNaturalist](https://www.inaturalist.org)
