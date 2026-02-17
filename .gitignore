@@ -3,3 +3,6 @@ dist/
 showboat.db
 .DS_Store
 *.log
+.beads/
+sidebar-features.png
+presets-screenshot.png
