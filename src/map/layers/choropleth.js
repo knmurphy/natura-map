@@ -49,44 +49,24 @@ function aggregateByRegion(geojson, boundaries, colorBy) {
   if (!geojson?.features?.length || !boundaries?.features?.length) return {};
 
   const counts = {};
-  // For species richness: track unique taxa per country
   const taxaSets = {};
 
   for (const obs of geojson.features) {
-    if (!obs.geometry || obs.geometry.type !== 'Point') continue;
+    if (!obs.geometry) continue;
 
-    const point = obs.geometry;
     let matched = false;
-
     for (const boundary of boundaries.features) {
-      if (!boundary.geometry) continue;
-
-      const geomType = boundary.geometry.type;
-      if (geomType !== 'Polygon' && geomType !== 'MultiPolygon') continue;
-
-      let inside = false;
-      if (geomType === 'Polygon') {
-        inside = booleanPointInPolygon(point, boundary);
-      } else {
-        // MultiPolygon: test each sub-polygon
-        for (const coords of boundary.geometry.coordinates) {
-          const subPoly = { type: 'Polygon', coordinates: coords };
-          if (booleanPointInPolygon(point, { type: 'Feature', geometry: subPoly })) {
-            inside = true;
-            break;
-          }
-        }
-      }
-
-      if (inside) {
-        const name = boundary.properties.name || boundary.properties.NAME || 'Unknown';
+      if (booleanPointInPolygon(obs.geometry, boundary.geometry)) {
+        const name = boundary.properties?.name || 'Unknown';
+        
         if (colorBy) {
-          const taxon = obs.properties?.[colorBy] ?? 'Unknown';
           if (!taxaSets[name]) taxaSets[name] = new Set();
+          const taxon = obs.properties?.[colorBy] ?? 'Unknown';
           taxaSets[name].add(taxon);
         } else {
           counts[name] = (counts[name] || 0) + 1;
         }
+        
         matched = true;
         break;
       }
@@ -140,8 +120,12 @@ export function remove(map, sourceId) {
   if (map.getLayer(BOUNDARIES_OUTLINE)) map.removeLayer(BOUNDARIES_OUTLINE);
   if (map.getSource(BOUNDARIES_SOURCE)) map.removeSource(BOUNDARIES_SOURCE);
   if (map.getSource(POINTS_SOURCE)) map.removeSource(POINTS_SOURCE);
-  if (map.getSource(sourceId)) map.removeSource(sourceId);
+  
   boundariesLoaded = false;
+  cachedBoundaries = null;
+  countByCountry = {};
+  currentColorBy = null;
+  currentGeojson = null;
 }
 
 export async function updateColorBy(map, sourceId, geojson, colorBy) {
@@ -152,14 +136,28 @@ export async function updateColorBy(map, sourceId, geojson, colorBy) {
   if (!boundaries) return;
 
   countByCountry = aggregateByRegion(geojson, boundaries, colorBy);
+  
+  // Update existing source data
+  const enriched = enrichBoundaries(boundaries);
+  const source = map.getSource(BOUNDARIES_SOURCE);
+  if (source) {
+    source.setData(enriched);
+    updateFillColor(map);
+  }
+}
 
-  // Remove existing layers and source to re-render with new data
-  if (map.getLayer(CHOROPLETH_LAYER)) map.removeLayer(CHOROPLETH_LAYER);
-  if (map.getLayer(BOUNDARIES_OUTLINE)) map.removeLayer(BOUNDARIES_OUTLINE);
-  if (map.getSource(BOUNDARIES_SOURCE)) map.removeSource(BOUNDARIES_SOURCE);
-  boundariesLoaded = false;
-
-  await renderChoropleth(map, boundaries);
+function enrichBoundaries(boundaries) {
+  return {
+    type: 'FeatureCollection',
+    features: boundaries.features.map(f => ({
+      type: 'Feature',
+      geometry: f.geometry,
+      properties: {
+        ...f.properties,
+        _obs_count: countByCountry[f.properties?.name || 'Unknown'] || 0
+      }
+    }))
+  };
 }
 
 async function renderChoropleth(map, boundaries) {
@@ -183,6 +181,10 @@ async function renderChoropleth(map, boundaries) {
 
   const maxCount = Math.max(1, ...Object.values(countByCountry));
 
+  // Ensure strictly ascending values for interpolate expression
+  const step1 = Math.max(2, Math.ceil(maxCount * 0.25));
+  const step2 = Math.max(step1 + 1, Math.ceil(maxCount * 0.5));
+
   map.addLayer({
     id: CHOROPLETH_LAYER,
     type: 'fill',
@@ -193,8 +195,8 @@ async function renderChoropleth(map, boundaries) {
         ['get', '_obs_count'],
         0, 'rgba(30, 30, 60, 0.3)',
         1, '#1a237e',
-        Math.ceil(maxCount * 0.25), '#1565c0',
-        Math.ceil(maxCount * 0.5), '#f9a825',
+        step1, '#1565c0',
+        step2, '#f9a825',
         maxCount, '#e6194b'
       ],
       'fill-opacity': 0.7
@@ -207,50 +209,34 @@ async function renderChoropleth(map, boundaries) {
     source: BOUNDARIES_SOURCE,
     paint: {
       'line-color': 'rgba(255,255,255,0.2)',
-      'line-width': 0.5
+      'line-width': 1
     }
-  });
+  }, CHOROPLETH_LAYER);
 
   boundariesLoaded = true;
 }
 
-/**
- * Clone boundaries and inject observation counts into properties.
- */
-function enrichBoundaries(boundaries) {
-  return {
-    type: 'FeatureCollection',
-    features: boundaries.features.map(f => ({
-      ...f,
-      properties: {
-        ...f.properties,
-        _obs_count: countByCountry[f.properties.name || f.properties.NAME] || 0
-      }
-    }))
-  };
-}
-
-/**
- * Update fill-color paint property with current count data.
- */
 function updateFillColor(map) {
-  if (!map.getLayer(CHOROPLETH_LAYER)) return;
   const maxCount = Math.max(1, ...Object.values(countByCountry));
-  map.setPaintProperty(CHOROPLETH_LAYER, 'fill-color', [
-    'interpolate', ['linear'],
-    ['get', '_obs_count'],
-    0, 'rgba(30, 30, 60, 0.3)',
-    1, '#1a237e',
-    Math.ceil(maxCount * 0.25), '#1565c0',
-    Math.ceil(maxCount * 0.5), '#f9a825',
-    maxCount, '#e6194b'
-  ]);
+  
+  // Ensure strictly ascending values for interpolate expression
+  const step1 = Math.max(2, Math.ceil(maxCount * 0.25));
+  const step2 = Math.max(step1 + 1, Math.ceil(maxCount * 0.5));
+
+  if (map.getLayer(CHOROPLETH_LAYER)) {
+    map.setPaintProperty(CHOROPLETH_LAYER, 'fill-color', [
+      'interpolate', ['linear'],
+      ['get', '_obs_count'],
+      0, 'rgba(30, 30, 60, 0.3)',
+      1, '#1a237e',
+      step1, '#1565c0',
+      step2, '#f9a825',
+      maxCount, '#e6194b'
+    ]);
+  }
 }
 
 function getFirstSymbolLayerId(map) {
   const layers = map.getStyle().layers;
-  for (const layer of layers) {
-    if (layer.type === 'symbol') return layer.id;
-  }
-  return undefined;
+  return layers.find(l => l.type === 'symbol')?.id;
 }
