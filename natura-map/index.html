@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>natura-map</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.0.0/dist/maplibre-gl.css" />
+  <link rel="stylesheet" href="./style/app.css" />
+</head>
+<body>
+  <div id="app">
+    <div id="sidebar">
+      <header class="sidebar-header">
+        <h1>natura-map</h1>
+        <p class="subtitle">Biodiversity observation mapping</p>
+      </header>
+
+      <section id="quick-select" class="panel">
+        <h2>Quick Select</h2>
+        <div id="preset-buttons"></div>
+      </section>
+
+      <section id="search-panel" class="panel">
+        <h2>Search</h2>
+        <div class="field">
+          <label for="taxon-input">Taxon</label>
+          <input type="text" id="taxon-input" placeholder="e.g. Amanita, Aves, Orchidaceae" autocomplete="off" />
+          <div id="taxon-suggestions" class="suggestions" hidden></div>
+        </div>
+        <div class="field">
+          <label for="place-input">Place</label>
+          <input type="text" id="place-input" placeholder="e.g. California, Costa Rica" autocomplete="off" />
+          <div id="place-suggestions" class="suggestions" hidden></div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="date-from">From</label>
+            <input type="date" id="date-from" />
+          </div>
+          <div class="field">
+            <label for="date-to">To</label>
+            <input type="date" id="date-to" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="quality-grade">Quality Grade</label>
+          <select id="quality-grade">
+            <option value="">Any</option>
+            <option value="research" selected>Research Grade</option>
+            <option value="needs_id">Needs ID</option>
+            <option value="casual">Casual</option>
+          </select>
+        </div>
+        <button id="search-btn" class="btn-primary">Search</button>
+        <div id="search-status" class="status" hidden></div>
+      </section>
+
+      <section id="layer-controls" class="panel">
+        <h2>Layer Type</h2>
+        <div class="layer-toggle">
+          <button class="layer-btn active" data-layer="points">Points</button>
+          <button class="layer-btn" data-layer="heatmap">Heatmap</button>
+          <button class="layer-btn" data-layer="clusters">Clusters</button>
+          <button class="layer-btn" data-layer="choropleth">Choropleth</button>
+        </div>
+        <div class="field">
+          <label for="color-by">Color By</label>
+          <select id="color-by">
+            <option value="iconic_taxon_name">Kingdom Group</option>
+            <option value="taxon_family">Family</option>
+            <option value="taxon_order">Order</option>
+            <option value="taxon_class">Class</option>
+          </select>
+        </div>
+      </section>
+
+      <section id="legend-panel" class="panel">
+        <h2>Legend</h2>
+        <div id="legend-content"></div>
+      </section>
+
+      <footer class="sidebar-footer">
+        <p>Data from <a href="https://www.inaturalist.org" target="_blank">iNaturalist</a></p>
+        <p>Inspired by <a href="https://www.alanrockefeller.com" target="_blank">Alan Rockefeller</a></p>
+      </footer>
+    </div>
+
+    <div id="map-container">
+      <div id="map"></div>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

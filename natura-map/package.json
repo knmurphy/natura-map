@@ -1,0 +1,24 @@
+{
+  "name": "natura-map",
+  "version": "1.0.0",
+  "description": "Interactive maps for biodiversity observation data. Built on MapLibre GL JS with Deck.gl escape hatch.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "maplibre-gl": "^5.0.0"
+  },
+  "optionalDependencies": {
+    "@deck.gl/core": "^9.0.0",
+    "@deck.gl/layers": "^9.0.0",
+    "@deck.gl/aggregation-layers": "^9.0.0",
+    "@deck.gl/mapbox": "^9.0.0"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0"
+  },
+  "license": "MIT"
+}
